@@ -401,34 +401,34 @@ app.put("/libro/:id", async (req, res) => {
 
 });
 
+//Método Put "/libro/prestar/:id"
+
 app.put("/libro/prestar/:id", async (req, res) => {
-
     let usuario = req.body.persona_id;
-    
-
     try {
-
         if (!usuario) {
             throw new Error("Usted debe enviar `persona_id = x (número de id)` para  prestar del libro");
         }
-
-        let query = "SELECT * FROM libro WHERE id= ? and persona_id IS NOT NULL";
-        let response = await qy(query, [req.params.id]);
-
-        if (response.length !== 0) {
-            throw new Error("El libro ya se prestó.");
+        let query = "SELECT * FROM persona WHERE id = ? ";
+        let response = await qy(query, [usuario]);
+        if (response.length == 0) {
+            throw new Error("No se puede PRESTAR este libro porque esta ID de usuario NO está registrada");
         }
-
-        query = "SELECT * FROM persona WHERE id = ? ";
+        query = "SELECT persona_id FROM libro WHERE id= ? ";
         response = await qy(query, [req.params.id]);
-       if (response.length === 0){
-           throw new Error("No se puede PRESTAR este libro porque esta ID de usuario NO está registrada");
-       }
+        if (response.length === 0) {
+            throw new Error("Ese libro no existe");
+        }
+        if (response[0].persona_id !== null) {
+            throw new Error("Ese libro está prestado");
+        }
+        if (response[0].persona_id == null) {
+            query = "UPDATE libro SET  persona_id = ? WHERE id = ?";
+            response = await qy(query, [usuario, req.params.id]);
+        }
+        console.log(response + "esta es la respuesta al delete correcto");
+        res.status(200).send({ "Modificación concretada, prestado al usuario con ID": usuario, response });
 
-        query = "UPDATE libro SET  persona_id = ? WHERE id = ?";
-        response = await qy(query, [usuario, req.params.id]);
-
-        res.status(200).send({ "Modificación concretada, prestado al usuario con ID": usuario , response });
     }
     catch (e) {
         console.error(e.message);
@@ -436,21 +436,27 @@ app.put("/libro/prestar/:id", async (req, res) => {
     }
 });
 
+
+//Método Put "/libro/devolver/:id"
 app.put("/libro/devolver/:id", async (req, res) => {
 
     try {
 
-        let query = "SELECT * FROM libro WHERE id= ? and persona_id IS NOT NULL";
-       let response = await qy(query, [req.params.id]);
-        if (response.length === 0)
-         {
-            throw new Error("El libro no se prestó.");
+        let query = "SELECT persona_id FROM libro WHERE id= ? ";
+        let response = await qy(query, [req.params.id]);
+
+        if (response.length === 0) {
+            throw new Error("Ese libro no existe");
+        }
+        if (response[0].persona_id === null) {
+            throw new Error("Ese libro no está prestado");
+        }
+        if (response[0].persona_id !== null) {
+            query = "UPDATE libro SET  persona_id = ? WHERE id = ?";
+            response = await qy(query, [req.body.persona_id, req.params.id]);
         }
 
-        query = "UPDATE libro SET  persona_id = ? WHERE id = ?";
-        response = await qy(query, [null, req.params.id]);
-
-        res.status(200).send({ "Modificación concretada": response });
+        res.status(200).send({ "Modificación concretada, libro devuelto": response });
     }
     catch (e) {
         console.error(e.message);
